@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="5c85adc9-6548-403e-91f4-9a281feca4e3" basePath="/api" >
+		<http:listener-connection host="localhost" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="ed1dab38-6e47-45d6-aadc-6ed46bb3b02c" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="admin" database="muledb" />
+	</db:config>
+	<db:config name="Database_Config2" doc:name="Database Config" doc:id="01320b2f-3506-4e4d-8dfb-c62caf2d0a2d" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="admin" database="muledb" />
+	</db:config>
+	<flow name="getFlights" doc:id="fd3c222c-2e5c-4f85-a2fc-9cab098c52cb" >
+		<http:listener doc:name="Listener" doc:id="514db0a8-3289-4139-aa38-d919befa4d01" config-ref="HTTP_Listener_config" path="/flights"/>
+		<set-payload value="flight info" doc:name="Set Payload" doc:id="89f49fc9-2368-4ea2-a567-6e13b5ab8263" />
+		<db:select doc:name="Select" doc:id="662f7596-e8dc-4336-bb52-3fc51f5544b8" config-ref="Database_Config">
+			<db:sql ><![CDATA[select *
+From training;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'ID': attributes.uriParams.ID}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="14ce8021-7b0f-498a-b971-193d04735614" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getFlightsById" doc:id="d4dbfc41-84f2-4f79-afb9-4ee51c0e60cb" >
+		<http:listener doc:name="Copy_of_Listener" doc:id="93e7499c-0ba1-424e-8d1b-93a6d59c5aa9" config-ref="HTTP_Listener_config" path="/flight" />
+		<set-payload value="flight info" doc:name="Copy_of_Set Payload" doc:id="814b10f6-e533-4d7a-94c7-3ce5e850bf70" />
+		<db:select doc:name="Copy_of_Select" doc:id="ae035ebe-edb0-432b-90f9-350bffc19595" config-ref="Database_Config" >
+			<db:sql ><![CDATA[select *
+From training
+WHERE ID = :ID;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'ID': attributes.uriParams.ID}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="ec627526-7f34-481b-9875-b01c865cf538" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="postFlight" doc:id="19a16583-61e9-4fae-9078-ff1463a56ac2" >
+		<http:listener doc:name="Listener" doc:id="2e092a25-1252-480f-bd16-59db995c4a03" config-ref="HTTP_Listener_config" path="/flights" allowedMethods="POST" />
+		<db:insert doc:name="Insert" doc:id="93725db1-f5bb-4d3b-923a-12cfc6b7d0c1" config-ref="Database_Config2">
+			<db:sql ><![CDATA[INSERT INTO training(ID,code,price,departureDate,origin,destination,emptySeats,planeType,totalSeats)
+VALUES(ID,code,price,departureDate,origin,destination,emptySeats,planeType,totalSeats);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+"ID":payload.ID,
+"code":payload.code,
+"price":payload.price,
+"departureDate":payload.departureDate,
+"origin":payload.origin,
+"destination":payload.destination,
+"emptySeats":payload.emptySeats,
+"planeType":payload.planeType,
+"totalSeats":payload.totalSeats
+}]]]></db:input-parameters>
+		</db:insert>
+		<set-payload value='{"message": "Flight added (but not really)"}' doc:name="Set Payload" doc:id="5144b7ae-c60a-43e8-afbd-f5b6cefd9509" />
+	</flow>
+</mule>
